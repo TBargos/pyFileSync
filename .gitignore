@@ -1,0 +1,6 @@
+# Python staff
+__pycache__/
+venv/
+
+# VSCode staff
+.vscode/
