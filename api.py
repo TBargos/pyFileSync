@@ -1,0 +1,2 @@
+class yadiskAPI:
+    pass
