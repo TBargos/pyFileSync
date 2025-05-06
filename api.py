@@ -3,6 +3,7 @@
 import configparser
 import logging
 import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 
 from requests import request, Response
 from requests.exceptions import HTTPError
@@ -67,12 +68,11 @@ class YadiskAPI:
         
         py_logger.debug('Начат парсинг XML-ответа.')
         for tag in root.findall('{DAV:}response/{DAV:}propstat/{DAV:}prop')[1:]:
-            last_modified = tag.find('{DAV:}getlastmodified').text
             filename = tag.find('{DAV:}displayname').text
             py_logger.debug(f'Обнаружен объект "{filename}".')
 
             try:
-                size = tag.find('{DAV:}getcontentlength').text
+                size = int(tag.find('{DAV:}getcontentlength').text)
                 py_logger.debug(f'"{filename}" имеет размер ({size} байт), значит "{filename}" - файл.')
             except AttributeError:
                 message = ('Внимание: объект "{name}" в облачном хранилище является папкой. ' 
@@ -81,11 +81,18 @@ class YadiskAPI:
                 ))
                 py_logger.warning(message)
                 continue
+
+            yandex_last_modified = tag.find('{DAV:}getlastmodified').text
+            dt_last_modified = datetime.strptime(
+                yandex_last_modified,
+                "%a, %d %b %Y %H:%M:%S GMT"
+            ).replace(tzinfo=timezone.utc)
             
             result[filename] = {
-                'last_modified': last_modified,
+                'last_modified': dt_last_modified,
                 'size': size
             }
+            
         
         py_logger.debug('Завершён парсинг XML-ответа.')
         py_logger.debug(f'Обнаружено файлов: {len(result)}')
