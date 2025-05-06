@@ -4,3 +4,6 @@ venv/
 
 # VSCode staff
 .vscode/
+
+# Script staff
+*.log
