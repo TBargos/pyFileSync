@@ -6,8 +6,11 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 import sys
 
-from requests import request, Response
+from requests import request, put, Response
 from requests.exceptions import HTTPError
+
+import utils
+import os
 
 
 py_logger = logging.getLogger(__name__)
@@ -20,28 +23,59 @@ class YadiskAPI:
         self.__token = token
         self.__cloud_path = cloud_path
 
-    def load(self, path: str):
+    def load(self, local_path: str, filename: str) -> None:
         """для загрузки файла в хранилище"""
-        # TODO добавить реализацию
-        pass
+        response = self._load(local_path, filename)
+        if response.status_code == 201:
+            py_logger.info(f'Файл "{filename}" успешно загружен.')
+        else:
+            py_logger.error(f'При загрузке файла "{filename}" возникли непредвиденные проблемы')
 
-    def reload(self, path: str):
+    def reload(self, local_path: str, filename: str) -> None:
         """для перезаписи файла в хранилище"""
-        # TODO добавить реализацию
-        pass
+        first_response = self._delete(filename)
+        if first_response.status_code != 204:
+            py_logger.error('Обновление файла невозможно: при удалении возникла непредвиденная ошибка')
+            return
+        py_logger.debug(f'Файл "{filename}" удалён в облачном хранилище')
+        second_response = self._load(local_path, filename)
+        if second_response.status_code == 201:
+            py_logger.info(f'Файл "{filename}" успешно обновлён в облачном хранилище')
+        else:
+            py_logger.error('Обновление файла невозможно: при загрузке возникла непредвиденная ошибка')
 
-    def delete(self, filename: str):
+    def delete(self, filename: str) -> None:
         """для удаления файла из хранилища"""
         response = self._delete(filename)
         if response.status_code == 204:
             py_logger.info(f'Файл "{filename}" успешно удалён.')
-        return response
+        else:
+            py_logger.error(f'При удалении файла "{filename}" возникли непредвиденные проблемы')
 
-    def get_info(self):
+    def get_info(self) -> dict[dict[str]] | None:
         """для получения информации о хранящихся в удалённом хранилище файлах"""
         return self._get_info()
 
-    def _delete(self, filename: str):
+    def _load(self, local_path: str, filename: str) -> Response:
+        file_path = os.path.join(local_path, filename)
+        py_logger.debug(f'Подготовка к загрузке файла "{filename}"')
+        md5, sha256 = utils.calculate_hashes(file_path)
+        headers = {
+            'Accept': '*/*',
+            'Authorization': self.__token,
+            'Etag': md5,
+            'Sha256': sha256,
+            'Expect': '100-continue',
+            'Content-Type': 'application/binary',
+        }
+
+        py_logger.debug(f'Открытие файла "{filename}" в двоичном режиме')
+        with open(file_path, 'rb') as f:
+            response = self._request("PUT", f'{self.__cloud_path}/{filename}', headers=headers, data=f)
+        py_logger.debug(f'Файл "{filename}" в двоичном режиме закрыт')
+        return response
+
+    def _delete(self, filename: str) -> Response:
         headers = {
             'Accept': '*/*',
             'Authorization': self.__token,
@@ -50,7 +84,7 @@ class YadiskAPI:
         response = self._request("DELETE", f'{self.__cloud_path}/{filename}', headers=headers)
         return response
 
-    def _get_info(self) -> dict[dict[str] | None]:
+    def _get_info(self) -> dict[dict[str]] | None:
         headers = {
             'Accept': '*/*',
             'Depth': '1',
@@ -63,9 +97,9 @@ class YadiskAPI:
             py_logger.info('Получены XML-данные от Яндекс.Диска')
         return self._make_info_dict(response)
         
-    def _request(self, method: str, endpoint: str, headers: dict[str]) -> Response:
+    def _request(self, method: str, endpoint: str, headers: dict[str], data=None) -> Response:
         try:
-            response = request(method, f'{self.BASE_URL}/{endpoint}', headers=headers)
+            response = request(method, f'{self.BASE_URL}/{endpoint}', headers=headers, data=data)
             py_logger.debug('Запрос отправлен на сервер Яндекс.Диска')
             response.raise_for_status()
             py_logger.debug('Получен ответ от Яндекс.Диска')

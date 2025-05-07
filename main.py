@@ -17,16 +17,16 @@ def initialize():
         sys.exit(1)
     else:
         config = config['Yandex']
-        log_path = config['log_path']
-        logging.basicConfig(filename=log_path, format=log_format, level=logging.DEBUG)
 
+    log_path = config['log_path']
+    logging.basicConfig(filename=log_path, format=log_format, level=logging.DEBUG)
+    
     sync_period = float(config['sync_period']) * 60
     yapi = YadiskAPI(token=config['token'], cloud_path=config['cloud_path'])
-    
-    logging.info('Первая синхронизация')
     infinite_sync(yapi, config['local_path'], sync_period)
     
 def infinite_sync(yapi: YadiskAPI, local_path: str, sync_period: float):
+    logging.info('Первая синхронизация')
     while True:
         logging.info('Синхронизация начата')
         cloud_dict = yapi.get_info()
@@ -39,9 +39,9 @@ def infinite_sync(yapi: YadiskAPI, local_path: str, sync_period: float):
         for file in todo_dict['delete']:
             yapi.delete(file)
         for file in todo_dict['load']:
-            yapi.load(file)
+            yapi.load(local_path, file)
         for file in todo_dict['reload']:
-            yapi.reload(file)
+            yapi.reload(local_path, file)
 
         logging.info('Синхронизация завершена')
         time.sleep(sync_period)

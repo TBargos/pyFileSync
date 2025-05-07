@@ -1,5 +1,6 @@
 import logging
 import os
+import hashlib
 from datetime import datetime, timezone
 
 from configparser import ConfigParser, NoOptionError, NoSectionError
@@ -78,3 +79,13 @@ def compare_cloud_local(cloud: dict[str], local: dict[str]) -> dict[str]:
     }
     py_logger.debug('Список задач для синхронизации подготовлен')
     return result
+
+def calculate_hashes(file_path: str, chunk_size=8192):
+    md5 = hashlib.md5()
+    sha256 = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(chunk_size), b''):
+            md5.update(chunk)
+            sha256.update(chunk)
+    py_logger.debug('Расчёт суммы MD5 и хэша SHA256 завершён')
+    return md5.hexdigest(), sha256.hexdigest()
