@@ -1,6 +1,6 @@
 import logging
-import logging.config
 import sys
+import time
 
 import utils
 from api import YadiskAPI
@@ -14,16 +14,36 @@ def initialize():
         logging.basicConfig(filename='config_load.log', format=log_format)
         logging.critical(exc)
         sys.exit(1)
-    
-    config = config['Yandex']
-    log_path = config['log_path']
-    logging.basicConfig(filename=log_path, format=log_format)
+    else:
+        config = config['Yandex']
+        log_path = config['log_path']
+        logging.basicConfig(filename=log_path, format=log_format, level=logging.DEBUG)
 
+    sync_period = float(config['sync_period']) * 60
     yapi = YadiskAPI(token=config['token'], cloud_path=config['cloud_path'])
-    cloud_dict = yapi.get_info(config['cloud_path'])
-    local_dict = utils.get_info(config['local_path'])
-    todo_dict = utils.compare_cloud_local(cloud_dict, local_dict)
     
+    logging.info('Первая синхронизация')
+    infinite_sync(yapi, config['cloud_path'], config['local_path'], sync_period)
+    
+def infinite_sync(yapi: YadiskAPI, cloud_path: str, local_path: str, sync_period: float):
+    while True:
+        logging.info('Синхронизация начата')
+        cloud_dict = yapi.get_info(cloud_path)
+        logging.info('Получен список облачных файлов')
+        local_dict = utils.get_info(local_path)
+        logging.info('Получен список локальных файлов')
+        todo_dict = utils.compare_cloud_local(cloud_dict, local_dict)
+        logging.info('Получен список задач для синхронизации')
+
+        for file in todo_dict['delete']:
+            yapi.delete(cloud_path, file)
+        for file in todo_dict['load']:
+            yapi.load(file)
+        for file in todo_dict['reload']:
+            yapi.reload(file)
+
+        logging.info('Синхронизация завершена')
+        time.sleep(sync_period)
 
 
 if __name__ == '__main__':
