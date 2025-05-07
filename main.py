@@ -10,7 +10,8 @@ def initialize():
     log_format = "%(name)s %(asctime)s %(levelname)s %(message)s"
     try:
         config = utils.get_config()
-    except FileNotFoundError as exc:
+        utils.raise_for_config(config)
+    except (FileNotFoundError, KeyError) as exc:
         logging.basicConfig(filename='config_load.log', format=log_format)
         logging.critical(exc)
         sys.exit(1)
@@ -23,12 +24,12 @@ def initialize():
     yapi = YadiskAPI(token=config['token'], cloud_path=config['cloud_path'])
     
     logging.info('Первая синхронизация')
-    infinite_sync(yapi, config['cloud_path'], config['local_path'], sync_period)
+    infinite_sync(yapi, config['local_path'], sync_period)
     
-def infinite_sync(yapi: YadiskAPI, cloud_path: str, local_path: str, sync_period: float):
+def infinite_sync(yapi: YadiskAPI, local_path: str, sync_period: float):
     while True:
         logging.info('Синхронизация начата')
-        cloud_dict = yapi.get_info(cloud_path)
+        cloud_dict = yapi.get_info()
         logging.info('Получен список облачных файлов')
         local_dict = utils.get_info(local_path)
         logging.info('Получен список локальных файлов')
@@ -36,7 +37,7 @@ def infinite_sync(yapi: YadiskAPI, cloud_path: str, local_path: str, sync_period
         logging.info('Получен список задач для синхронизации')
 
         for file in todo_dict['delete']:
-            yapi.delete(cloud_path, file)
+            yapi.delete(file)
         for file in todo_dict['load']:
             yapi.load(file)
         for file in todo_dict['reload']:

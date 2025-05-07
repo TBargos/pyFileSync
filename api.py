@@ -30,27 +30,27 @@ class YadiskAPI:
         # TODO добавить реализацию
         pass
 
-    def delete(self, endpoint: str, filename: str):
+    def delete(self, filename: str):
         """для удаления файла из хранилища"""
-        response = self._delete(endpoint, filename)
+        response = self._delete(filename)
         if response.status_code == 204:
             py_logger.info(f'Файл "{filename}" успешно удалён.')
         return response
 
-    def get_info(self, endpoint: str):
+    def get_info(self):
         """для получения информации о хранящихся в удалённом хранилище файлах"""
-        return self._get_info(endpoint)
+        return self._get_info()
 
-    def _delete(self, endpoint: str, filename: str):
+    def _delete(self, filename: str):
         headers = {
             'Accept': '*/*',
             'Authorization': self.__token,
             "Content-Type": "application/xml"
         }
-        response = self._request("DELETE", f'{endpoint}/{filename}', headers=headers)
+        response = self._request("DELETE", f'{self.__cloud_path}/{filename}', headers=headers)
         return response
 
-    def _get_info(self, endpoint: str) -> dict[dict[str] | None]:
+    def _get_info(self) -> dict[dict[str] | None]:
         headers = {
             'Accept': '*/*',
             'Depth': '1',
@@ -58,7 +58,7 @@ class YadiskAPI:
             "Content-Type": "application/xml",
         }
 
-        response = self._request("PROPFIND", endpoint, headers)
+        response = self._request("PROPFIND", self.__cloud_path, headers)
         if response.status_code == 207:
             py_logger.info('Получены XML-данные от Яндекс.Диска')
         return self._make_info_dict(response)

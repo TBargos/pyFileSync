@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
-from configparser import ConfigParser
+from configparser import ConfigParser, NoOptionError, NoSectionError
 
 
 py_logger = logging.getLogger(__name__)
@@ -14,6 +14,19 @@ def get_config(filename: str = 'config.ini') -> ConfigParser:
     config = ConfigParser()
     config.read(filename)
     return config
+
+def raise_for_config(config: ConfigParser) -> None:
+    not_null_keys = ('local_path', 'sync_period', 'log_path', 'token')
+    may_null_keys = ('cloud_path',)
+
+    if not config.has_section('Yandex'):
+        raise KeyError('Секция "Yandex" отсутствует в конфигурационном файле')
+    for key in not_null_keys:
+        if not config['Yandex'].get(key, fallback=None):
+            raise KeyError(f'Параметр {key} не инициализирован или отсутствует в конфигурационном файле')
+    for key in may_null_keys:
+        if config['Yandex'].get(key, fallback=None) is None:
+            raise KeyError(f'Параметр {key} отсутствует в конфигурационном файле')
 
 def get_info(path: str) -> dict[str]:
     if not os.path.isdir(path):
@@ -39,10 +52,6 @@ def get_info(path: str) -> dict[str]:
         }
     py_logger.debug(f'Обнаружено файлов в локальном хранилище: {len(result)}')
     return result
-
-def check_config() -> bool:
-    # TODO написать проверку конфига на заполненность или убрать объявление
-    pass
 
 def compare_cloud_local(cloud: dict[str], local: dict[str]) -> dict[str]:
     # Первый тур: поиск файлов, которых нет или в облаке, или локально
