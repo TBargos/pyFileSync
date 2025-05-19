@@ -8,7 +8,8 @@
         Инициализирует конфигурацию, настраивает логирование и запускает бесконечный цикл синхронизации.
 
     infinite_sync(yapi: YadiskAPI, local_path: str, sync_period: float) -> None
-        Запускает бесконечный цикл синхронизации файлов между локальной папкой и облаком с заданным периодом."""
+        Запускает бесконечный цикл синхронизации файлов между локальной папкой и облаком с заданным периодом.
+"""
 
 import logging
 import sys
@@ -39,19 +40,20 @@ def initialize() -> None:
         config = utils.get_config()
         utils.raise_for_config(config)
     except (FileNotFoundError, KeyError) as exc:
-        logging.basicConfig(filename='config_load.log', format=log_format)
+        logging.basicConfig(filename="config_load.log", format=log_format)
         logging.critical(exc)
         sys.exit(1)
     else:
-        config = config['Yandex']
+        config = config["Yandex"]
 
-    log_path = config['log_path']
+    log_path = config["log_path"]
     logging.basicConfig(filename=log_path, format=log_format, level=logging.DEBUG)
-    
-    sync_period = float(config['sync_period']) * 60
-    yapi = YadiskAPI(token=config['token'], cloud_path=config['cloud_path'])
-    infinite_sync(yapi, config['local_path'], sync_period)
-    
+
+    sync_period = float(config["sync_period"]) * 60
+    yapi = YadiskAPI(token=config["token"], cloud_path=config["cloud_path"])
+    infinite_sync(yapi, config["local_path"], sync_period)
+
+
 def infinite_sync(yapi: YadiskAPI, local_path: str, sync_period: float) -> None:
     """
     Запускает бесконечный цикл синхронизации локальной папки с облачным хранилищем.
@@ -68,26 +70,26 @@ def infinite_sync(yapi: YadiskAPI, local_path: str, sync_period: float) -> None:
         sync_period (float): Период синхронизации в секундах.
     """
 
-    logging.info('Первая синхронизация')
+    logging.info("Первая синхронизация")
     while True:
-        logging.info('Синхронизация начата')
+        logging.info("Синхронизация начата")
         cloud_dict = yapi.get_info()
-        logging.info('Получен список облачных файлов')
+        logging.info("Получен список облачных файлов")
         local_dict = utils.get_info(local_path)
-        logging.info('Получен список локальных файлов')
+        logging.info("Получен список локальных файлов")
         todo_dict = utils.compare_cloud_local(cloud_dict, local_dict)
-        logging.info('Получен список задач для синхронизации')
+        logging.info("Получен список задач для синхронизации")
 
-        for file in todo_dict['delete']:
+        for file in todo_dict["delete"]:
             yapi.delete(file)
-        for file in todo_dict['load']:
+        for file in todo_dict["load"]:
             yapi.load(local_path, file)
-        for file in todo_dict['reload']:
+        for file in todo_dict["reload"]:
             yapi.reload(local_path, file)
 
-        logging.info('Синхронизация завершена')
+        logging.info("Синхронизация завершена")
         time.sleep(sync_period)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     initialize()

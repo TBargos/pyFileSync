@@ -19,7 +19,7 @@ class YadiskAPI:
     """
     Интерфейс для взаимодействия с облачным хранилищем Яндекс.Диска через WebDAV API.
 
-    Класс YadiskAPI инкапсулирует методы для загрузки, удаления, обновления файлов 
+    Класс YadiskAPI инкапсулирует методы для загрузки, удаления, обновления файлов
     и получения информации о файлах в облачном хранилище.
 
     Attributes:
@@ -70,7 +70,9 @@ class YadiskAPI:
         if response.status_code == 201:
             py_logger.info(f'Файл "{filename}" успешно загружен.')
         else:
-            py_logger.error(f'При загрузке файла "{filename}" возникли непредвиденные проблемы')
+            py_logger.error(
+                f'При загрузке файла "{filename}" возникли непредвиденные проблемы'
+            )
 
     def reload(self, local_path: str, filename: str) -> None:
         """
@@ -88,14 +90,18 @@ class YadiskAPI:
 
         first_response = self._delete(filename)
         if first_response.status_code != 204:
-            py_logger.error('Обновление файла невозможно: при удалении возникла непредвиденная ошибка')
+            py_logger.error(
+                "Обновление файла невозможно: при удалении возникла непредвиденная ошибка"
+            )
             return
         py_logger.debug(f'Файл "{filename}" удалён в облачном хранилище')
         second_response = self._load(local_path, filename)
         if second_response.status_code == 201:
             py_logger.info(f'Файл "{filename}" успешно обновлён в облачном хранилище')
         else:
-            py_logger.error('Обновление файла невозможно: при загрузке возникла непредвиденная ошибка')
+            py_logger.error(
+                "Обновление файла невозможно: при загрузке возникла непредвиденная ошибка"
+            )
 
     def delete(self, filename: str) -> None:
         """
@@ -113,7 +119,9 @@ class YadiskAPI:
         if response.status_code == 204:
             py_logger.info(f'Файл "{filename}" успешно удалён.')
         else:
-            py_logger.error(f'При удалении файла "{filename}" возникли непредвиденные проблемы')
+            py_logger.error(
+                f'При удалении файла "{filename}" возникли непредвиденные проблемы'
+            )
 
     def get_info(self) -> dict[dict[str]] | None:
         """
@@ -158,17 +166,19 @@ class YadiskAPI:
         py_logger.debug(f'Подготовка к загрузке файла "{filename}"')
         md5, sha256 = utils.calculate_hashes(file_path)
         headers = {
-            'Accept': '*/*',
-            'Authorization': self.__token,
-            'Etag': md5,
-            'Sha256': sha256,
-            'Expect': '100-continue',
-            'Content-Type': 'application/binary',
+            "Accept": "*/*",
+            "Authorization": self.__token,
+            "Etag": md5,
+            "Sha256": sha256,
+            "Expect": "100-continue",
+            "Content-Type": "application/binary",
         }
 
         py_logger.debug(f'Открытие файла "{filename}" в двоичном режиме')
-        with open(file_path, 'rb') as f:
-            response = self._request("PUT", f'{self.__cloud_path}/{filename}', headers=headers, data=f)
+        with open(file_path, "rb") as f:
+            response = self._request(
+                "PUT", f"{self.__cloud_path}/{filename}", headers=headers, data=f
+            )
         py_logger.debug(f'Файл "{filename}" в двоичном режиме закрыт')
         return response
 
@@ -186,13 +196,15 @@ class YadiskAPI:
         Returns:
             Response: Объект ответа HTTP.
         """
-            
+
         headers = {
-            'Accept': '*/*',
-            'Authorization': self.__token,
-            "Content-Type": "application/xml"
+            "Accept": "*/*",
+            "Authorization": self.__token,
+            "Content-Type": "application/xml",
         }
-        response = self._request("DELETE", f'{self.__cloud_path}/{filename}', headers=headers)
+        response = self._request(
+            "DELETE", f"{self.__cloud_path}/{filename}", headers=headers
+        )
         return response
 
     def _get_info(self) -> dict[dict[str]] | None:
@@ -216,20 +228,22 @@ class YadiskAPI:
         Returns:
             dict[dict[str]] | None: Словарь с метаданными файлов или None при ошибке.
         """
-            
+
         headers = {
-            'Accept': '*/*',
-            'Depth': '1',
-            'Authorization': self.__token,
+            "Accept": "*/*",
+            "Depth": "1",
+            "Authorization": self.__token,
             "Content-Type": "application/xml",
         }
 
         response = self._request("PROPFIND", self.__cloud_path, headers)
         if response.status_code == 207:
-            py_logger.info('Получены XML-данные от Яндекс.Диска')
+            py_logger.info("Получены XML-данные от Яндекс.Диска")
         return self._make_info_dict(response)
-        
-    def _request(self, method: str, endpoint: str, headers: dict[str], data=None) -> Response:
+
+    def _request(
+        self, method: str, endpoint: str, headers: dict[str], data=None
+    ) -> Response:
         """
         Универсальный метод для отправки HTTP-запросов к API Яндекс.Диска.
 
@@ -257,14 +271,16 @@ class YadiskAPI:
         """
 
         try:
-            response = request(method, f'{self.BASE_URL}/{endpoint}', headers=headers, data=data)
-            py_logger.debug('Запрос отправлен на сервер Яндекс.Диска')
+            response = request(
+                method, f"{self.BASE_URL}/{endpoint}", headers=headers, data=data
+            )
+            py_logger.debug("Запрос отправлен на сервер Яндекс.Диска")
             response.raise_for_status()
-            py_logger.debug('Получен ответ от Яндекс.Диска')
+            py_logger.debug("Получен ответ от Яндекс.Диска")
         except HTTPError:
-            message = 'HTTP Error'
+            message = "HTTP Error"
             if response.status_code == 401:
-                message = 'Некорректный токен'
+                message = "Некорректный токен"
             elif response.status_code == 404:
                 message = f'Объекта "{endpoint}" не существует в облачном хранилище'
             else:
@@ -272,9 +288,9 @@ class YadiskAPI:
                 return response
             py_logger.critical(message, exc_info=True)
             sys.exit(1)
-            
+
         return response
-    
+
     @staticmethod
     def _make_info_dict(response: Response) -> dict[dict[str]] | None:
         """
@@ -301,41 +317,41 @@ class YadiskAPI:
                 'size' (int): Размер файла в байтах.
             Возвращает None, если парсинг невозможен.
         """
-        
+
         result = dict()
         try:
             root = ET.fromstring(response.text)
         except ET.ParseError:
             py_logger.error("Тело ответа пустое, парсинг XML невозможен.")
             return
-        
-        py_logger.info('Начат парсинг XML-ответа.')
-        for tag in root.findall('{DAV:}response/{DAV:}propstat/{DAV:}prop')[1:]:
-            filename = tag.find('{DAV:}displayname').text
+
+        py_logger.info("Начат парсинг XML-ответа.")
+        for tag in root.findall("{DAV:}response/{DAV:}propstat/{DAV:}prop")[1:]:
+            filename = tag.find("{DAV:}displayname").text
             py_logger.debug(f'Обнаружен объект "{filename}"')
 
             try:
-                size = int(tag.find('{DAV:}getcontentlength').text)
-                py_logger.debug(f'"{filename}" имеет размер ({size} байт), значит "{filename}" - файл')
+                size = int(tag.find("{DAV:}getcontentlength").text)
+                py_logger.debug(
+                    f'"{filename}" имеет размер ({size} байт), значит "{filename}" - файл'
+                )
             except AttributeError:
-                message = ('Внимание: объект "{name}" в облачном хранилище является папкой. ' 
-                'Процесс синхронизации не предусмотрен для вложенных папок'.format(
-                    name=tag.find('{DAV:}displayname').text
-                ))
+                message = (
+                    'Внимание: объект "{name}" в облачном хранилище является папкой. '
+                    "Процесс синхронизации не предусмотрен для вложенных папок".format(
+                        name=tag.find("{DAV:}displayname").text
+                    )
+                )
                 py_logger.warning(message)
                 continue
 
-            yandex_last_modified = tag.find('{DAV:}getlastmodified').text
+            yandex_last_modified = tag.find("{DAV:}getlastmodified").text
             dt_last_modified = datetime.strptime(
-                yandex_last_modified,
-                "%a, %d %b %Y %H:%M:%S GMT"
+                yandex_last_modified, "%a, %d %b %Y %H:%M:%S GMT"
             ).replace(tzinfo=timezone.utc)
-            
-            result[filename] = {
-                'last_modified': dt_last_modified,
-                'size': size
-            }
 
-        py_logger.info('Завершён парсинг XML-ответа от Яндекс.Диска')
-        py_logger.debug(f'Обнаружено файлов в облачном хранилище: {len(result)}')
+            result[filename] = {"last_modified": dt_last_modified, "size": size}
+
+        py_logger.info("Завершён парсинг XML-ответа от Яндекс.Диска")
+        py_logger.debug(f"Обнаружено файлов в облачном хранилище: {len(result)}")
         return result
